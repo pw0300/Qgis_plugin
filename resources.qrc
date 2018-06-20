@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/QuickDigitize" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
