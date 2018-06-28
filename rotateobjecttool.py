@@ -15,6 +15,8 @@ class RotateObjectTool:
     def __init__(self, iface,  toolBar):
         self.iface = iface
         self.canvas = self.iface.mapCanvas()
+        self.layer= self.iface.activeLayer()
+
         
         self.p1 = None
         self.m1 = None
@@ -24,6 +26,22 @@ class RotateObjectTool:
         self.act_rotateobject = QAction(QIcon(":/plugins/cadtools/icons/rotatefeature.png"), QCoreApplication.translate("ctools", "Rotate Object"),  self.iface.mainWindow())
         self.act_selectvertexandobject= QAction(QIcon(":/plugins/cadtools/icons/selectvertexandfeature.png"), QCoreApplication.translate("ctools", "Select Vertex and Object"),  self.iface.mainWindow())
         self.act_selectvertexandobject.setCheckable(True)     
+        try:
+                if self.layer.isEditable():
+                    self.act_rotateobject.setEnabled(True)
+                    self.act_selectvertexandobject.setEnabled(True)
+                    self.layer.editingStopped.connect(self.toggle_1)
+        except:
+            pass
+            
+        else:
+            self.act_rotateobject.setEnabled(False)
+            self.act_selectvertexandobject.setEnabled(False)
+            self.layer.editingStarted.connect(self.toggle_1)
+             
+        
+        # self.iface.currentLayerChanged["QgsMapLayer *"].connect(self.toggle_1)
+        # self.canvas.selectionChanged.connect(self.toggle_1)
              
         self.act_rotateobject.triggered.connect(self.showDialog)
         self.act_selectvertexandobject.triggered.connect(self.selectvertexandobject)
@@ -35,6 +53,33 @@ class RotateObjectTool:
                     
         self.tool = VertexAndObjectFinderTool(self.canvas)   
 
+
+    def toggle_1(self):
+            if self.layer:
+                # disconnect all previously connect signals in current layer
+                try:
+                    self.layer.editingStarted.disconnect(self.toggle_1)
+                except:
+                    pass
+                try:
+                    self.layer.editingStopped.disconnect(self.toggle_1)
+                except:
+                    pass
+                
+                # check if current layer is editable and has selected features
+                # and decide whether the plugin button should be enable or disable
+                if self.layer.isEditable():
+                    self.act_rotateobject.setEnabled(True)
+                    self.act_selectvertexandobject.setEnabled(True)
+                    self.layer.editingStopped.connect(self.toggle_1)
+                # layer is not editable    
+                else:
+                    self.act_rotateobject.setEnabled(False)
+                    self.act_selectvertexandobject.setEnabled(False)
+                    self.layer.editingStarted.connect(self.toggle_1)
+            else:
+                self.act_rotateobject.setEnabled(False)
+                self.act_selectvertexandobject.setEnabled(False)
 
     def selectvertexandobject(self):
         mc = self.canvas
@@ -61,12 +106,12 @@ class RotateObjectTool:
             #az = Azimuth.calculate(self.p1,  self.p2)
             
             flags = Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowMaximizeButtonHint  
-            self.ctrl = RotateObjectGui(self.iface.mainWindow(),  flags)
-            self.ctrl.initGui()
-            self.ctrl.show()
+            self.ctrl_1 = RotateObjectGui(self.iface.mainWindow(),  flags)
+            self.ctrl_1.initGui()
+            self.ctrl_1.show()
 
-            self.ctrl.okClicked.connect(self.rotateObject)
-            self.ctrl.unsetTool.connect(self.unsetTool)
+            self.ctrl_1.okClicked.connect(self.rotateObject)
+            self.ctrl_1.unsetTool.connect(self.unsetTool)
         
         pass
 
@@ -74,7 +119,7 @@ class RotateObjectTool:
     def rotateObject(self,  angle):
         geom = utils.rotate(self.feat.geometry(), self.p1,  angle * math.pi / 180)
         if geom <> None:
-            utils.addGeometryToLayer(geom)
+            utils.addGeometryToLayer(geom,self.iface)
             self.canvas.refresh()
 
         
